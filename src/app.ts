@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { initDatabase } from './services/db.js';
 import authRoutes from './routes/auth.js';
 import orderRoutes from './routes/orders.js';
 import productRoutes from './routes/products.js';
@@ -33,6 +34,14 @@ app.get('/api/health', (_req, res) => {
 
 app.use(errorHandler);
 
-seedData();
+let initialized = false;
+
+export async function initApp(): Promise<void> {
+  if (initialized) return;
+  await initDatabase();
+  await seedData();
+  initialized = true;
+  console.log('[app] Database initialized and seeded');
+}
 
 export default app;

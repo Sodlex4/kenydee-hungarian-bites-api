@@ -1,4 +1,5 @@
-import { store } from './services/store.js';
+import bcrypt from 'bcryptjs';
+import { getPool } from './services/db.js';
 import type { Order, Customer, Product, Notification } from './types/index.js';
 
 const sampleOrders: Order[] = [
@@ -10,7 +11,7 @@ const sampleOrders: Order[] = [
     date: '2026-05-20',
     status: 'Completed',
     method: 'M-Pesa',
-    deliveryAddress: 'Murang\'a Town, Near Post Office',
+    deliveryAddress: "Murang'a Town, Near Post Office",
   },
   {
     id: '#HBT-1002',
@@ -20,7 +21,7 @@ const sampleOrders: Order[] = [
     date: '2026-05-21',
     status: 'Pending',
     method: 'Cash',
-    deliveryAddress: 'Kahuro Street, Murang\'a',
+    deliveryAddress: "Kahuro Street, Murang'a",
   },
   {
     id: '#HBT-1003',
@@ -30,7 +31,7 @@ const sampleOrders: Order[] = [
     date: '2026-05-21',
     status: 'Processing',
     method: 'M-Pesa',
-    deliveryAddress: 'Kenyatta Highway, Murang\'a',
+    deliveryAddress: "Kenyatta Highway, Murang'a",
   },
   {
     id: '#HBT-1004',
@@ -43,7 +44,7 @@ const sampleOrders: Order[] = [
     date: '2026-05-22',
     status: 'Completed',
     method: 'M-Pesa',
-    deliveryAddress: 'Kiria-ini, Murang\'a',
+    deliveryAddress: "Kiria-ini, Murang'a",
   },
   {
     id: '#HBT-1005',
@@ -53,7 +54,7 @@ const sampleOrders: Order[] = [
     date: '2026-05-22',
     status: 'Completed',
     method: 'M-Pesa',
-    deliveryAddress: 'Maragua Ridge, Murang\'a',
+    deliveryAddress: "Maragua Ridge, Murang'a",
   },
   {
     id: '#HBT-1006',
@@ -63,7 +64,7 @@ const sampleOrders: Order[] = [
     date: '2026-05-23',
     status: 'Pending',
     method: 'Cash',
-    deliveryAddress: 'Town Center, Murang\'a',
+    deliveryAddress: "Town Center, Murang'a",
   },
   {
     id: '#HBT-1007',
@@ -73,7 +74,7 @@ const sampleOrders: Order[] = [
     date: '2026-05-23',
     status: 'Pending',
     method: 'M-Pesa',
-    deliveryAddress: 'Mumbi Estate, Murang\'a',
+    deliveryAddress: "Mumbi Estate, Murang'a",
   },
 ];
 
@@ -101,10 +102,70 @@ const sampleNotifications: Notification[] = [
   { id: 5, type: 'info', title: 'Order Completed', message: 'Order #HBT-1005 marked as Completed', time: '1 day ago', read: true },
 ];
 
-export function seedData(): void {
-  store.orders.push(...sampleOrders);
-  store.customers.push(...sampleCustomers);
-  store.products.push(...sampleProducts);
-  store.notifications.push(...sampleNotifications);
+export async function seedData(): Promise<void> {
+  const p = await getPool();
+
+  const [[productCount]] = await p.execute<any[]>('SELECT COUNT(*) AS cnt FROM products');
+  if (productCount.cnt > 0) {
+    console.log('[seed] Data already exists, skipping seed');
+    return;
+  }
+
+  for (const product of sampleProducts) {
+    await p.execute(
+      'INSERT INTO products (id, name, price, category, stock, image, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [product.id, product.name, product.price, product.category, product.stock, product.image, product.createdAt],
+    );
+  }
+
+  for (const order of sampleOrders) {
+    await p.execute(
+      `INSERT INTO orders (id, customer, items, amount, date, status, method, delivery_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        order.id,
+        JSON.stringify(order.customer),
+        JSON.stringify(order.items),
+        order.amount,
+        order.date,
+        order.status,
+        order.method ?? null,
+        order.deliveryAddress,
+      ],
+    );
+  }
+
+  for (const customer of sampleCustomers) {
+    await p.execute(
+      `INSERT INTO customers (id, name, email, phone, orders, total_spent, last_order, joined)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [customer.id, customer.name, customer.email, customer.phone, customer.orders, customer.totalSpent, customer.lastOrder, customer.joined],
+    );
+  }
+
+  for (const notif of sampleNotifications) {
+    await p.execute(
+      'INSERT INTO notifications (id, type, title, message, time, `read`) VALUES (?, ?, ?, ?, ?, ?)',
+      [notif.id, notif.type, notif.title, notif.message, notif.time, notif.read],
+    );
+  }
+
+  await p.execute(
+    `INSERT INTO settings (id, site_name, site_description, whatsapp, email, currency, delivery_fee, free_delivery_min, delivery_time, delivery_radius)
+     VALUES (1, 'Hungarian Bites', 'Premium Hungarian Hot Dog Rolls', 'https://wa.me/254759233065', 'Kennedygikonyo3@gmail.com', 'KES', 0, 200, '2 hours', 'Murang\\'a Town')`,
+  );
+
+  await p.execute(
+    `INSERT INTO preferences (id, notifications, email_alerts, order_updates, marketing_emails)
+     VALUES (1, TRUE, TRUE, TRUE, FALSE)`,
+  );
+
+  const defaultHash = await bcrypt.hash('admin', 10);
+  await p.execute(
+    `INSERT INTO admins (email, password_hash) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)`,
+    ['admin@hungarianbites.com', defaultHash],
+  );
+
   console.log(`[seed] Loaded ${sampleOrders.length} orders, ${sampleCustomers.length} customers, ${sampleProducts.length} products`);
 }

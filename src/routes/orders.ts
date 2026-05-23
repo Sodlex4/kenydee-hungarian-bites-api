@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { store, findOrderById, nextNotificationId } from '../services/store.js';
+import {
+  getAllOrders, findOrderById, insertOrder,
+  updateOrderStatus, deleteOrder, getOrdersByCustomerName,
+  insertNotification,
+} from '../services/store.js';
 
 const router = Router();
 
@@ -26,58 +30,79 @@ const createOrderSchema = z.object({
   deliveryAddress: z.string().min(5),
 });
 
-router.get('/', authenticate, (_req, res) => {
-  res.json(store.orders);
-});
-
-router.get('/:id', authenticate, (req, res) => {
-  const order = findOrderById(req.params.id);
-  if (!order) {
-    res.status(404).json({ error: 'Order not found' });
-    return;
+router.get('/', authenticate, async (_req, res, next) => {
+  try {
+    const orders = await getAllOrders();
+    res.json(orders);
+  } catch (err) {
+    next(err);
   }
-  res.json(order);
 });
 
-router.post('/', validate(createOrderSchema), (req, res) => {
-  const order = req.body;
-  store.orders.unshift(order);
-  store.notifications.unshift({
-    id: nextNotificationId(),
-    type: 'order',
-    title: 'New Order Received',
-    message: `Order ${order.id} from ${order.customer.name}`,
-    time: 'Just now',
-    read: false,
-  });
-  res.status(201).json(order);
-});
-
-router.patch('/:id/status', authenticate, validate(z.object({ status: z.enum(['Pending', 'Processing', 'Completed', 'Cancelled']) })), (req, res) => {
-  const order = findOrderById(req.params.id);
-  if (!order) {
-    res.status(404).json({ error: 'Order not found' });
-    return;
+router.get('/:id', authenticate, async (req, res, next) => {
+  try {
+    const order = await findOrderById(req.params.id);
+    if (!order) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
+    res.json(order);
+  } catch (err) {
+    next(err);
   }
-  order.status = req.body.status;
-  res.json(order);
 });
 
-router.delete('/:id', authenticate, (req, res) => {
-  const idx = store.orders.findIndex((o) => o.id === req.params.id);
-  if (idx === -1) {
-    res.status(404).json({ error: 'Order not found' });
-    return;
+router.post('/', validate(createOrderSchema), async (req, res, next) => {
+  try {
+    const order = req.body;
+    await insertOrder(order);
+    await insertNotification({
+      type: 'order',
+      title: 'New Order Received',
+      message: `Order ${order.id} from ${order.customer.name}`,
+      time: 'Just now',
+      read: false,
+    });
+    res.status(201).json(order);
+  } catch (err) {
+    next(err);
   }
-  store.orders.splice(idx, 1);
-  res.json({ message: 'Order deleted' });
 });
 
-router.get('/customer/:name', authenticate, (req, res) => {
-  const customerOrders = store.orders.filter(
-    (o) => o.customer.name.toLowerCase().includes(req.params.name.toLowerCase()),
-  );
-  res.json(customerOrders);
+router.patch('/:id/status', authenticate, validate(z.object({ status: z.enum(['Pending', 'Processing', 'Completed', 'Cancelled']) })), async (req, res, next) => {
+  try {
+    const updated = await updateOrderStatus(req.params.id, req.body.status);
+    if (!updated) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
+    const order = await findOrderById(req.params.id);
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id', authenticate, async (req, res, next) => {
+  try {
+    const deleted = await deleteOrder(req.params.id);
+    if (!deleted) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
+    res.json({ message: 'Order deleted' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/customer/:name', authenticate, async (req, res, next) => {
+  try {
+    const customerOrders = await getOrdersByCustomerName(req.params.name);
+    res.json(customerOrders);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

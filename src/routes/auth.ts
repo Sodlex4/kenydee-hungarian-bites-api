@@ -4,19 +4,11 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config/env.js';
 import { validate } from '../middleware/validate.js';
+import { getAdminByEmail, upsertAdminPassword } from '../services/store.js';
 
 const router = Router();
 
 const ADMIN_EMAIL = 'admin@hungarianbites.com';
-// default password: "admin" — should be changed on first login in production
-let adminPasswordHash: string | null = null;
-
-async function getPasswordHash(): Promise<string> {
-  if (!adminPasswordHash) {
-    adminPasswordHash = await bcrypt.hash('admin', 10);
-  }
-  return adminPasswordHash;
-}
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -30,8 +22,12 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
-    const hash = await getPasswordHash();
-    const valid = await bcrypt.compare(password, hash);
+    const admin = await getAdminByEmail(ADMIN_EMAIL);
+    if (!admin) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+    const valid = await bcrypt.compare(password, admin.passwordHash);
     if (!valid) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
@@ -55,13 +51,18 @@ const changePasswordSchema = z.object({
 router.post('/change-password', validate(changePasswordSchema), async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const hash = await getPasswordHash();
-    const valid = await bcrypt.compare(currentPassword, hash);
+    const admin = await getAdminByEmail(ADMIN_EMAIL);
+    if (!admin) {
+      res.status(401).json({ error: 'Admin not found' });
+      return;
+    }
+    const valid = await bcrypt.compare(currentPassword, admin.passwordHash);
     if (!valid) {
       res.status(401).json({ error: 'Current password is incorrect' });
       return;
     }
-    adminPasswordHash = await bcrypt.hash(newPassword, 10);
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await upsertAdminPassword(ADMIN_EMAIL, newHash);
     res.json({ message: 'Password changed successfully' });
   } catch (err) {
     next(err);

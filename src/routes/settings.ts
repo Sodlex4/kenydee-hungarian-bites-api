@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { store } from '../services/store.js';
+import { getSettings, upsertSettings, getPreferences, upsertPreferences } from '../services/store.js';
 
 const router = Router();
 
@@ -25,43 +25,61 @@ const preferencesSchema = z.object({
   marketingEmails: z.boolean(),
 });
 
-router.get('/', authenticate, (_req, res) => {
-  if (!store.settings) {
-    store.settings = {
-      siteName: 'Hungarian Bites',
-      siteDescription: 'Premium Hungarian Hot Dog Rolls',
-      whatsapp: 'https://wa.me/254759233065',
-      email: 'Kennedygikonyo3@gmail.com',
-      currency: 'KES',
-      deliveryFee: 0,
-      freeDeliveryMin: 200,
-      deliveryTime: '2 hours',
-      deliveryRadius: 'Murang\'a Town',
-    };
+router.get('/', authenticate, async (_req, res, next) => {
+  try {
+    let settings = await getSettings();
+    if (!settings) {
+      settings = await upsertSettings({
+        siteName: 'Hungarian Bites',
+        siteDescription: 'Premium Hungarian Hot Dog Rolls',
+        whatsapp: 'https://wa.me/254759233065',
+        email: 'Kennedygikonyo3@gmail.com',
+        currency: 'KES',
+        deliveryFee: 0,
+        freeDeliveryMin: 200,
+        deliveryTime: '2 hours',
+        deliveryRadius: "Murang'a Town",
+      });
+    }
+    res.json(settings);
+  } catch (err) {
+    next(err);
   }
-  res.json(store.settings);
 });
 
-router.put('/', authenticate, validate(settingsSchema), (req, res) => {
-  store.settings = req.body;
-  res.json(store.settings);
-});
-
-router.get('/preferences', authenticate, (_req, res) => {
-  if (!store.preferences) {
-    store.preferences = {
-      notifications: true,
-      emailAlerts: true,
-      orderUpdates: true,
-      marketingEmails: false,
-    };
+router.put('/', authenticate, validate(settingsSchema), async (req, res, next) => {
+  try {
+    const settings = await upsertSettings(req.body);
+    res.json(settings);
+  } catch (err) {
+    next(err);
   }
-  res.json(store.preferences);
 });
 
-router.patch('/preferences', authenticate, validate(preferencesSchema), (req, res) => {
-  store.preferences = req.body;
-  res.json(store.preferences);
+router.get('/preferences', authenticate, async (_req, res, next) => {
+  try {
+    let prefs = await getPreferences();
+    if (!prefs) {
+      prefs = await upsertPreferences({
+        notifications: true,
+        emailAlerts: true,
+        orderUpdates: true,
+        marketingEmails: false,
+      });
+    }
+    res.json(prefs);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/preferences', authenticate, validate(preferencesSchema), async (req, res, next) => {
+  try {
+    const prefs = await upsertPreferences(req.body);
+    res.json(prefs);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

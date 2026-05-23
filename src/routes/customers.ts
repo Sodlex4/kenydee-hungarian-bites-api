@@ -1,18 +1,25 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { store } from '../services/store.js';
+import { getAllCustomers, getOrdersByCustomerName } from '../services/store.js';
 
 const router = Router();
 
-router.get('/', authenticate, (_req, res) => {
-  res.json(store.customers);
+router.get('/', authenticate, async (_req, res, next) => {
+  try {
+    const customers = await getAllCustomers();
+    res.json(customers);
+  } catch (err) {
+    next(err);
+  }
 });
 
-router.get('/:name/orders', authenticate, (req, res) => {
-  const customerOrders = store.orders.filter(
-    (o) => o.customer.name.toLowerCase().includes(req.params.name.toLowerCase()),
-  );
-  res.json(customerOrders);
+router.get('/:name/orders', authenticate, async (req, res, next) => {
+  try {
+    const customerOrders = await getOrdersByCustomerName(req.params.name);
+    res.json(customerOrders);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

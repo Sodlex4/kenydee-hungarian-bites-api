@@ -16,6 +16,10 @@ export const config = {
   jwtExpiresIn: env('JWT_EXPIRES_IN', '7d'),
   whatsappNumber: env('WHATSAPP_NUMBER', '254759233065'),
   corsOrigins: env('CORS_ORIGINS', 'http://localhost:8080').split(','),
-  databaseUrl: env('DATABASE_URL', 'file:./dev.db'),
+  dbHost: env('DB_HOST', '127.0.0.1'),
+  dbPort: envInt('DB_PORT', 3306),
+  dbUser: env('DB_USER', 'root'),
+  dbPassword: env('DB_PASSWORD', ''),
+  dbName: env('DB_NAME', 'hungarian_bites'),
   isDev: env('NODE_ENV', 'development') === 'development',
 } as const;
