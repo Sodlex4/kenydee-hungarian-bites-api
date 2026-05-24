@@ -33,7 +33,7 @@ export async function seedData(): Promise<void> {
      VALUES (1, TRUE, TRUE, TRUE, FALSE)`,
   );
 
-  const defaultHash = await bcrypt.hash('admin', 10);
+  const defaultHash = await bcrypt.hash('admin00', 10);
   await p.execute(
     `INSERT INTO admins (email, password_hash) VALUES (?, ?)
      ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)`,

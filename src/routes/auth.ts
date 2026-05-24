@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config/env.js';
+import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { getAdminByEmail, upsertAdminPassword } from '../services/store.js';
 
@@ -48,7 +49,7 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(6),
 });
 
-router.post('/change-password', validate(changePasswordSchema), async (req, res, next) => {
+router.post('/change-password', authenticate, validate(changePasswordSchema), async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const admin = await getAdminByEmail(ADMIN_EMAIL);
