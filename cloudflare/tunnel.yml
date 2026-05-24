@@ -1,0 +1,7 @@
+tunnel: hungarian-bites
+credentials-file: /home/sodlex/.cloudflared/hungarian-bites.json
+
+ingress:
+  - hostname: hungarianbites.co.ke
+    service: http://localhost:8080
+  - service: http_status:404
