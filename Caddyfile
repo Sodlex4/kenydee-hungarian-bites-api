@@ -1,0 +1,18 @@
+hungarianbites.co.ke {
+    root * /home/sodlex/dev/web/kenydee-hungarian-bites-frontend/dist
+    file_server
+    encode gzip
+
+    @api {
+        path /api/*
+    }
+    handle @api {
+        reverse_proxy localhost:3000
+    }
+
+    header /assets/* Cache-Control "public, max-age=31536000, immutable"
+
+    log {
+        output file /var/log/caddy/hungarianbites-access.log
+    }
+}
