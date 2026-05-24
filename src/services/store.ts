@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { getPool } from './db.js';
 import type {
@@ -313,6 +314,42 @@ export async function getAdminByEmail(email: string): Promise<{ email: string; p
     'SELECT email, password_hash, token_version FROM admins WHERE email = ?', [email],
   );
   return rows.length ? { email: rows[0].email, passwordHash: rows[0].password_hash, tokenVersion: rows[0].token_version } : null;
+}
+
+export async function createRefreshToken(adminEmail: string): Promise<string> {
+  const token = crypto.randomBytes(40).toString('hex');
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  await (await getPool()).execute(
+    'INSERT INTO refresh_tokens (token, admin_email, expires_at) VALUES (?, ?, ?)',
+    [token, adminEmail, expiresAt],
+  );
+  return token;
+}
+
+export async function validateRefreshToken(token: string): Promise<{ adminEmail: string } | null> {
+  const [rows] = await (await getPool()).execute<RowDataPacket[]>(
+    'SELECT admin_email, expires_at, revoked FROM refresh_tokens WHERE token = ?',
+    [token],
+  );
+  if (!rows.length) return null;
+  const row = rows[0];
+  if (row.revoked) return null;
+  if (new Date(row.expires_at) < new Date()) return null;
+  return { adminEmail: row.admin_email };
+}
+
+export async function revokeRefreshToken(token: string): Promise<void> {
+  await (await getPool()).execute(
+    'UPDATE refresh_tokens SET revoked = TRUE WHERE token = ?',
+    [token],
+  );
+}
+
+export async function revokeAllRefreshTokens(adminEmail: string): Promise<void> {
+  await (await getPool()).execute(
+    'UPDATE refresh_tokens SET revoked = TRUE WHERE admin_email = ?',
+    [adminEmail],
+  );
 }
 
 export async function upsertAdminPassword(email: string, passwordHash: string): Promise<void> {

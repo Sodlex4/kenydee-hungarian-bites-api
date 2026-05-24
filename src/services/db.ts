@@ -120,6 +120,18 @@ export async function initDatabase(): Promise<void> {
     `ALTER TABLE admins ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 1`
   );
 
+  await p.execute(`
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      token VARCHAR(255) NOT NULL UNIQUE,
+      admin_email VARCHAR(255) NOT NULL,
+      expires_at DATETIME NOT NULL,
+      revoked BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (admin_email) REFERENCES admins(email) ON DELETE CASCADE
+    )
+  `);
+
   console.log('[db] Database schema initialized');
 }
 
