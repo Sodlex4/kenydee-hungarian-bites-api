@@ -110,11 +110,15 @@ export async function initDatabase(): Promise<void> {
 
   await p.execute(`
     CREATE TABLE IF NOT EXISTS admins (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      password_hash VARCHAR(255) NOT NULL
+      email VARCHAR(255) PRIMARY KEY,
+      password_hash VARCHAR(255) NOT NULL,
+      token_version INT NOT NULL DEFAULT 1
     )
   `);
+
+  await p.execute(
+    `ALTER TABLE admins ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 1`
+  );
 
   console.log('[db] Database schema initialized');
 }

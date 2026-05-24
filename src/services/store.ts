@@ -308,18 +308,17 @@ export async function upsertPreferences(data: AdminPreferences): Promise<AdminPr
 
 // ── Admins ───────────────────────────────────────────
 
-export async function getAdminByEmail(email: string): Promise<{ email: string; passwordHash: string } | null> {
+export async function getAdminByEmail(email: string): Promise<{ email: string; passwordHash: string; tokenVersion: number } | null> {
   const [rows] = await (await getPool()).execute<RowDataPacket[]>(
-    'SELECT email, password_hash FROM admins WHERE email = ?', [email],
+    'SELECT email, password_hash, token_version FROM admins WHERE email = ?', [email],
   );
-  return rows.length ? { email: rows[0].email, passwordHash: rows[0].password_hash } : null;
+  return rows.length ? { email: rows[0].email, passwordHash: rows[0].password_hash, tokenVersion: rows[0].token_version } : null;
 }
 
 export async function upsertAdminPassword(email: string, passwordHash: string): Promise<void> {
   await (await getPool()).execute(
-    `INSERT INTO admins (email, password_hash) VALUES (?, ?)
-     ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)`,
-    [email, passwordHash],
+    'UPDATE admins SET password_hash = ?, token_version = token_version + 1 WHERE email = ?',
+    [passwordHash, email],
   );
 }
 

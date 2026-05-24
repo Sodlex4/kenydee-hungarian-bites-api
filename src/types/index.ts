@@ -80,6 +80,7 @@ export interface DashboardStats {
 export interface AuthPayload {
   userId: string;
   role: 'admin';
+  tokenVersion: number;
 }
 
 declare global {

@@ -43,7 +43,7 @@ router.post('/login', loginLimiter, validate(loginSchema), async (req, res, next
       return;
     }
     const token = jwt.sign(
-      { userId: '1', role: 'admin' },
+      { userId: '1', role: 'admin', tokenVersion: admin.tokenVersion },
       config.jwtSecret,
       { expiresIn: '7d' as const },
     );
