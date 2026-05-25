@@ -1,6 +1,14 @@
 # ── Staging (always works locally) ──
 :9090 {
-    reverse_proxy localhost:8080
+    @api {
+        path /api/*
+    }
+    handle @api {
+        reverse_proxy localhost:3000
+    }
+    handle {
+        reverse_proxy localhost:8080
+    }
     encode gzip
 }
 

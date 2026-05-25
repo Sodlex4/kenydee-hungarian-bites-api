@@ -25,7 +25,7 @@ const preferencesSchema = z.object({
   marketingEmails: z.boolean(),
 });
 
-router.get('/', authenticate, async (_req, res, next) => {
+router.get('/', async (_req, res, next) => {
   try {
     let settings = await getSettings();
     if (!settings) {
