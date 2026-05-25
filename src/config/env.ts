@@ -21,5 +21,10 @@ export const config = {
   dbUser: env('DB_USER', 'root'),
   dbPassword: env('DB_PASSWORD', ''),
   dbName: env('DB_NAME', 'hungarian_bites'),
+  smtpHost: env('SMTP_HOST', ''),
+  smtpPort: envInt('SMTP_PORT', 587),
+  smtpUser: env('SMTP_USER', ''),
+  smtpPass: env('SMTP_PASS', ''),
+  emailFrom: env('EMAIL_FROM', ''),
   isDev: env('NODE_ENV', 'development') === 'development',
 } as const;

@@ -1,18 +1,19 @@
-hungarianbites.co.ke {
-    root * /home/sodlex/dev/web/kenydee-hungarian-bites-frontend/dist
-    file_server
+# ── Staging (always works locally) ──
+:9090 {
+    reverse_proxy localhost:8080
     encode gzip
-
-    @api {
-        path /api/*
-    }
-    handle @api {
-        reverse_proxy localhost:3000
-    }
-
-    header /assets/* Cache-Control "public, max-age=31536000, immutable"
-
-    log {
-        output file /var/log/caddy/hungarianbites-access.log
-    }
 }
+
+# ── Production (uncomment when DNS resolves) ──
+# 1. Add A record: hungarianbites.co.ke → 102.208.170.227
+# 2. Uncomment below
+# 3. docker compose restart caddy
+#
+# hungarianbites.co.ke {
+#     reverse_proxy localhost:8080
+#     encode gzip
+#     header /assets/* Cache-Control "public, max-age=31536000, immutable"
+#     log {
+#         output file /var/log/caddy/hungarianbites-access.log
+#     }
+# }

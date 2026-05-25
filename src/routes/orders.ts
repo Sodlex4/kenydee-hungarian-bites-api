@@ -7,6 +7,7 @@ import {
   updateOrderStatus, deleteOrder, getOrdersByCustomerName,
   insertNotification,
 } from '../services/store.js';
+import { sendOrderStatusEmail } from '../services/email.js';
 
 const router = Router();
 
@@ -28,6 +29,19 @@ const createOrderSchema = z.object({
   date: z.string(),
   status: z.enum(['Pending', 'Processing', 'Completed', 'Cancelled']).default('Pending'),
   deliveryAddress: z.string().min(5),
+});
+
+router.get('/track/:id', async (req, res, next) => {
+  try {
+    const order = await findOrderById(req.params.id);
+    if (!order) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get('/', authenticate, async (_req, res, next) => {
@@ -77,6 +91,7 @@ router.patch('/:id/status', authenticate, validate(z.object({ status: z.enum(['P
       return;
     }
     const order = await findOrderById(req.params.id);
+    sendOrderStatusEmail(order!);
     res.json(order);
   } catch (err) {
     next(err);

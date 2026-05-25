@@ -1,5 +1,5 @@
 tunnel: hungarian-bites
-credentials-file: /home/sodlex/.cloudflared/hungarian-bites.json
+credentials-file: /home/nonroot/.cloudflared/hungarian-bites.json
 
 ingress:
   - hostname: hungarianbites.co.ke
